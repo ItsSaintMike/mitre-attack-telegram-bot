@@ -35,26 +35,28 @@ Telegram-бот для малварь-аналитиков, пентестеро
 ```bash
 git clone https://github.com/ItsSaintMike/mitre-attack-telegram-bot.git
 cd mitre-attack-telegram-bot
-
+```
 
 ### 2. Создание виртуального окружения
 
 
+```bash
 python3 -m venv venv
 source venv/bin/activate  # Для Linux/Mac
 # venv\Scripts\activate    # Для Windows
+```
 
 ### 3. Установка зависимостей
 
-
+```bash
 pip install -r requirements.txt
 
 Настройка переменных окружения
 Создайте файл .env и добавьте в него токен вашего бота:
-
+```
 ### 4. Настройка переменных окружения
 
-
+```bash
 nano .env
 
 
@@ -65,19 +67,21 @@ DB_PATH=data/mitre_data.db
 UPDATE_INTERVAL=86400
 MAX_SEARCH_RESULTS=15
 LOG_LEVEL=INFO
+```
 
 ### 5. Запуск бота
 
-
+```bash
 python bot.py
+```
 
 ### 6. Запуск через PM2
 
-
+```bash
 pm2 start venv/bin/python --name "mitre-bot" -- bot.py
 pm2 save
 pm2 startup
-
+```
 ### 📁 Структура проекта
 
 mitre-attack-telegram-bot/
