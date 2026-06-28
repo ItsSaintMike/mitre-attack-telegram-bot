@@ -32,9 +32,10 @@ Telegram-бот для малварь-аналитиков, пентестеро
 
 ### 1. Клонирование репозитория
 
-
+```bash
 git clone https://github.com/ItsSaintMike/mitre-attack-telegram-bot.git
 cd mitre-attack-telegram-bot
+
 
 ### 2. Создание виртуального окружения
 
