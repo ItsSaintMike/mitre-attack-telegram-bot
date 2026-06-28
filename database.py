@@ -161,7 +161,17 @@ class Database:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
-            # Сначала ищем по ID
+            # 1. Ищем по ID (точное совпадение)
+            if query.upper().startswith('T') and query.upper()[1:].isdigit():
+                cursor.execute('''
+                    SELECT * FROM techniques 
+                    WHERE id = ? AND is_deprecated = 0
+                ''', (query.upper(),))
+                results = [dict(row) for row in cursor.fetchall()]
+                if results:
+                    return results
+            
+            # 2. Ищем по английским полям (название, описание, тактика)
             cursor.execute('''
                 SELECT * FROM techniques 
                 WHERE is_deprecated = 0 AND (
@@ -175,8 +185,8 @@ class Database:
             
             results = [dict(row) for row in cursor.fetchall()]
             
-            # Если ничего не нашли, ищем по русским переводам
-            if not results:
+            # 3. Если ничего не нашли, ищем по русским переводам
+            if not results and self.translations:
                 for tech_id, rus_name in self.translations.items():
                     if query.lower() in rus_name.lower():
                         tech = self.get_technique(tech_id)

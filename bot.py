@@ -4,6 +4,7 @@ import sys
 import time
 import threading
 import logging
+import html
 from datetime import datetime, timedelta
 
 import telebot
@@ -15,7 +16,8 @@ from mitre_api import MitreAPI
 from messages import Messages
 from utils import (
     format_technique_id, format_description, get_time_ago,
-    generate_attack_chain, generate_yara_hint, is_technique_id
+    generate_attack_chain, generate_yara_hint, is_technique_id,
+    escape_html
 )
 
 logger = Config.setup_logging()
@@ -68,8 +70,8 @@ def handle_new(message):
         tactic_rus = db.get_russian_tactic(tech['tactic_name'])
         pt_url = get_pt_url(tech['id'])
 
-        response += f"• <b>{tech['id']}</b> - {display_name}\n"
-        response += f"  📋 {tactic_rus}\n"
+        response += f"• <b>{escape_html(tech['id'])}</b> - {escape_html(display_name)}\n"
+        response += f"  📋 {escape_html(tactic_rus)}\n"
         response += f"  📅 {get_time_ago(tech['created_date'])}\n"
         response += f"  🔗 {pt_url}\n\n"
 
@@ -88,7 +90,7 @@ def handle_tactics(message):
     response = "📋 <b>Тактики MITRE ATT&CK:</b>\n\n"
     for tactic in tactics:
         rus_name = db.get_russian_tactic(tactic['name'])
-        response += f"<b>{tactic['id']}</b> - {rus_name}\n"
+        response += f"<b>{escape_html(tactic['id'])}</b> - {escape_html(rus_name)}\n"
         desc = format_description(tactic.get('description', ''), 80)
         response += f"<i>{desc}</i>\n\n"
 
@@ -130,15 +132,15 @@ def process_tactic(message):
     if not techniques:
         bot.send_message(
             message.chat.id,
-            f"❌ По тактике '{query}' ничего не найдено."
+            f"❌ По тактике '{escape_html(query)}' ничего не найдено."
         )
         return
 
-    response = f"📌 <b>Техники тактики {query}:</b>\n\n"
+    response = f"📌 <b>Техники тактики {escape_html(query)}:</b>\n\n"
     for tech in techniques[:15]:
         rus_name = db.get_russian_name(tech['id'])
         display_name = rus_name if rus_name else tech['name']
-        response += f"• <b>{tech['id']}</b> - {display_name}\n"
+        response += f"• <b>{escape_html(tech['id'])}</b> - {escape_html(display_name)}\n"
 
     if len(techniques) > 15:
         response += f"\n... и еще {len(techniques) - 15}"
@@ -160,7 +162,7 @@ def process_malware(message):
     if not techniques:
         bot.send_message(
             message.chat.id,
-            f"❌ Малварь '{malware_name}' не найдена.\n"
+            f"❌ Малварь '{escape_html(malware_name)}' не найдена.\n"
             f"Список: /malware_list\nДобавить: /add_malware"
         )
         return
@@ -169,7 +171,7 @@ def process_malware(message):
     for tech in techniques:
         rus_name = db.get_russian_name(tech['id'])
         display_name = rus_name if rus_name else tech['name']
-        tech_list += f"  • <b>{tech['id']}</b> - {display_name}\n"
+        tech_list += f"  • <b>{escape_html(tech['id'])}</b> - {escape_html(display_name)}\n"
 
     attack_chain = generate_attack_chain(techniques)
 
@@ -178,7 +180,7 @@ def process_malware(message):
         yara_hints.append(f"• {tech['id']}: {generate_yara_hint(tech['id'])}")
 
     response = messages.MALWARE_TEMPLATE.format(
-        malware_name=malware_name,
+        malware_name=escape_html(malware_name),
         count=len(techniques),
         techniques=tech_list,
         attack_chain=attack_chain,
@@ -224,15 +226,15 @@ def process_add_malware(message):
         db.add_malware_techniques(malware_name, techniques)
         bot.send_message(
             message.chat.id,
-            f"✅ <b>Малварь '{malware_name}' добавлена!</b>\n"
+            f"✅ <b>Малварь '{escape_html(malware_name)}' добавлена!</b>\n"
             f"📊 Техник: {len(techniques)}\n"
-            f"🔍 /malware {malware_name}",
+            f"🔍 /malware {escape_html(malware_name)}",
             parse_mode='HTML'
         )
         logger.info(f"Added malware: {malware_name}")
 
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
+        bot.send_message(message.chat.id, f"❌ Ошибка: {escape_html(str(e))}")
 
 @bot.message_handler(commands=['malware_list'])
 def handle_malware_list(message):
@@ -248,7 +250,7 @@ def handle_malware_list(message):
     response = "🦠 <b>Список малварей:</b>\n\n"
     for malware in malware_list:
         techniques = db.get_techniques_by_malware(malware)
-        response += f"• <b>{malware}</b> ({len(techniques)} техник)\n"
+        response += f"• <b>{escape_html(malware)}</b> ({len(techniques)} техник)\n"
 
     response += "\n💡 /malware [название] - для анализа"
 
@@ -299,7 +301,7 @@ def handle_update(message):
     except Exception as e:
         logger.error(f"Update error: {e}")
         bot.edit_message_text(
-            f"❌ Ошибка: {str(e)}",
+            f"❌ Ошибка: {escape_html(str(e))}",
             chat_id=message.chat.id,
             message_id=status_msg.message_id
         )
@@ -321,12 +323,18 @@ def handle_text(message):
             tactic_rus = db.get_russian_tactic(tech.get('tactic_name', ''))
             pt_url = get_pt_url(tech['id'])
 
+            safe_id = escape_html(tech['id'])
+            safe_name = escape_html(display_name)
+            safe_tactic = escape_html(tactic_rus)
+            safe_platform = escape_html(tech.get('platform', 'Не указано'))
+            safe_description = format_description(tech.get('description', ''), 300)
+
             response = messages.TECHNIQUE_TEMPLATE.format(
-                id=tech['id'],
-                name=display_name,
-                tactic_name=tactic_rus,
-                platform=tech.get('platform', 'Не указано'),
-                description=format_description(tech.get('description', ''), 300),
+                id=safe_id,
+                name=safe_name,
+                tactic_name=safe_tactic,
+                platform=safe_platform,
+                description=safe_description,
                 url=pt_url
             )
 
@@ -334,7 +342,7 @@ def handle_text(message):
             if malware_list:
                 response += f"\n\n🦠 <b>Используется в малварях:</b>\n"
                 for malware in malware_list[:5]:
-                    response += f"  • {malware}\n"
+                    response += f"  • {escape_html(malware)}\n"
 
             bot.send_message(message.chat.id, response, parse_mode='HTML', disable_web_page_preview=True)
             return
@@ -344,7 +352,7 @@ def handle_text(message):
     if not results:
         bot.send_message(
             message.chat.id,
-            f"🔍 По запросу '{query}' ничего не найдено.\n\n"
+            f"🔍 По запросу '{escape_html(query)}' ничего не найдено.\n\n"
             f"💡 Попробуйте:\n"
             f"• Поискать на русском (например, 'фишинг')\n"
             f"• Поискать на английском (например, 'phishing')\n"
@@ -353,20 +361,25 @@ def handle_text(message):
         )
         return
 
-    response = f"🔍 <b>Результаты по '{query}':</b>\n\n"
+    response = f"🔍 <b>Результаты по '{escape_html(query)}':</b>\n\n"
     for tech in results:
         rus_name = db.get_russian_name(tech['id'])
         display_name = rus_name if rus_name else tech['name']
         tactic_rus = db.get_russian_tactic(tech['tactic_name'])
         pt_url = get_pt_url(tech['id'])
 
-        response += f"<b>{tech['id']}</b> - {display_name}\n"
-        response += f"📋 {tactic_rus}\n"
-        response += f"📝 {format_description(tech.get('description', ''), 100)}\n"
+        safe_id = escape_html(tech['id'])
+        safe_name = escape_html(display_name)
+        safe_tactic = escape_html(tactic_rus)
+        safe_description = format_description(tech.get('description', ''), 100)
+
+        response += f"<b>{safe_id}</b> - {safe_name}\n"
+        response += f"📋 {safe_tactic}\n"
+        response += f"📝 {safe_description}\n"
         response += f"🔗 {pt_url}\n\n"
 
     if len(results) > 0:
-        response += f"💡 Для деталей отправьте ID техники (например, {results[0]['id']})"
+        response += f"💡 Для деталей отправьте ID техники (например, {escape_html(results[0]['id'])})"
 
     bot.send_message(
         message.chat.id,

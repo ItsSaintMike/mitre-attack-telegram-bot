@@ -1,4 +1,5 @@
 import re
+import html
 from datetime import datetime
 from typing import List, Dict
 
@@ -9,8 +10,13 @@ def format_technique_id(tech_id: str) -> str:
     return match.group(0).upper() if match else tech_id
 
 def format_description(description: str, max_length: int = 200) -> str:
+    """Обрезает описание и экранирует HTML"""
     if not description:
         return "Описание отсутствует"
+    
+    # Экранируем HTML-символы
+    description = html.escape(description)
+    
     if len(description) <= max_length:
         return description
     return description[:max_length] + "..."
@@ -50,7 +56,6 @@ def analyze_malware_behavior(techniques: List[Dict]) -> Dict:
 
 def generate_attack_chain(techniques: List[Dict]) -> str:
     """Генерирует цепочку атак на русском"""
-    # Соответствие английских названий тактик русским
     tactic_translation = {
         'Reconnaissance': 'Разведка',
         'Resource Development': 'Разработка ресурсов',
@@ -81,7 +86,6 @@ def generate_attack_chain(techniques: List[Dict]) -> str:
 
     for phase in chain_order:
         if phase in behavior:
-            # Переводим название тактики на русский
             russian_phase = tactic_translation.get(phase, phase)
             chain.append(f"🔹 <b>{russian_phase}</b>")
             for tech in behavior[phase]:
@@ -125,8 +129,13 @@ def is_technique_id(text: str) -> bool:
     return bool(re.match(pattern, text.strip()))
 
 def normalize_query(query: str) -> str:
-    """Нормализует поисковый запрос (убирает лишнее, приводит к нижнему регистру)"""
+    """Нормализует поисковый запрос"""
     query = query.strip().lower()
-    # Убираем множественные пробелы
     query = re.sub(r'\s+', ' ', query)
     return query
+
+def escape_html(text: str) -> str:
+    """Экранирует HTML символы"""
+    if not text:
+        return ""
+    return html.escape(text)
